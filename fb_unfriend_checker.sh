@@ -135,24 +135,24 @@ echo "Current db: $after_db"
 # Perform the comparison based on the check_type
 unfriend_output=""
 if [ "$action" = "removed" ] || [ "$action" = "both" ]; then
-    echo -e "\nFinding removed friends and changed relationships..."
+    echo -e "\nFinding removed friends..."
     unfriend_output=$(sqlite3 <<EOF
     ATTACH DATABASE '$before_db' AS previous;
     ATTACH DATABASE '$after_db' AS current;
 
-    -- Find removed ids
-    SELECT id
-    FROM previous.contacts
-    WHERE id NOT IN (SELECT id FROM current.contacts);
-
-    /* This query identifies changes in contact_viewer_relationship or friendship_status.
-       An unfriend action will trigger these changes before the ID is removed. */
+    /* This query identifies changes in contact_viewer_relationship when the previous value was 2. */
     SELECT current.id 
     FROM current.contacts AS current
     JOIN previous.contacts AS previous
     ON current.id = previous.id
-    WHERE current.contact_viewer_relationship != previous.contact_viewer_relationship
-       OR current.friendship_status != previous.friendship_status;
+    WHERE previous.contact_viewer_relationship = 2 
+       AND current.contact_viewer_relationship != 2;
+
+    -- Handle the case where the entire item no longer exists in the current database
+    SELECT id
+    FROM previous.contacts
+    WHERE id NOT IN (SELECT id FROM current.contacts)
+       AND contact_viewer_relationship = 2;
 
     DETACH DATABASE current;
     DETACH DATABASE previous;
@@ -160,16 +160,18 @@ EOF
 )
 fi
 
+new_friends_output=""
 if [ "$action" = "new" ] || [ "$action" = "both" ]; then
     echo -e "\nFinding new friends..."
     new_friends_output=$(sqlite3 <<EOF
     ATTACH DATABASE '$before_db' AS previous;
     ATTACH DATABASE '$after_db' AS current;
 
-    -- Find new ids
+    -- Find new ids that have contact_viewer_relationship = 2
     SELECT id
     FROM current.contacts
-    WHERE id NOT IN (SELECT id FROM previous.contacts);
+    WHERE id NOT IN (SELECT id FROM previous.contacts)
+      AND contact_viewer_relationship = 2;
 
     DETACH DATABASE current;
     DETACH DATABASE previous;
@@ -177,12 +179,13 @@ EOF
 )
 fi
 
+
 echo
 
 if [ -n "$unfriend_output" ] || [ -n "$new_friends_output" ]; then
             
     if [ -n "$unfriend_output" ]; then # Check if there are any removed or changed relationships
-        echo -e "\n.·´¯(>▂<)´¯·. You may get unfriended (╥_╥) OR re-added"
+        echo -e "\n.·´¯(>▂<)´¯·. You got unfriended (╥_╥)"
         echo "$unfriend_output" | while read -r id; do
             name=$(sqlite3 "$before_db" "SELECT name FROM contacts WHERE id = '$id';") # Use this if you only want to show the name, instead of the line below.
             #name=$(sqlite3 -header -line "$before_db" "SELECT * FROM contacts WHERE id = '$id';") # Use this if you want to show ALL columns, instead of the line above.
@@ -191,7 +194,11 @@ if [ -n "$unfriend_output" ] || [ -n "$new_friends_output" ]; then
             else
                 echo -e "\nOpening https://www.facebook.com/$id"
             fi
-            xdg-open "https://www.facebook.com/$id" & # Open URL in the default web browser
+            if [[ "$id" =~ ^[a-zA-Z0-9+/=]+$ ]]; then # Sanity check
+                xdg-open "https://www.facebook.com/$id" & # Open URL in the default web browser
+            else # Now id is only LONG_INT, but just in case it becomes Base64
+                echo "Skipping invalid ID: $id. Only Base64 encoded or numeric IDs are allowed."
+            fi
         done
     fi
         
@@ -205,7 +212,11 @@ if [ -n "$unfriend_output" ] || [ -n "$new_friends_output" ]; then
             else
                 echo -e "\nOpening https://www.facebook.com/$id"
             fi
-            xdg-open "https://www.facebook.com/$id" &
+            if [[ "$id" =~ ^[a-zA-Z0-9+/=]+$ ]]; then # Sanity check
+                xdg-open "https://www.facebook.com/$id" &
+            else # Now id is only LONG_INT, but just in case it becomes Base64
+                echo "Skipping invalid ID: $id. Only Base64 encoded or numeric IDs are allowed."
+            fi
         done
     fi
     
@@ -220,6 +231,23 @@ else
     echo "Prompt to remove the new database you just pulled (y/n):"
     rm -i -- "$after_db"
 fi
+
+# Clean up any remaining WAL and SHM files just in case
+# Ensure there is no `exit 1` after the database is created but before this point
+echo "Cleaning up generated -WAL and -SHM files from sqlite3."
+if [ -e "${before_db}-wal" ]; then
+    rm -- "${before_db}-wal"
+fi
+if [ -e "${before_db}-shm" ]; then
+    rm -- "${before_db}-shm"
+fi
+if [ -e "${after_db}-wal" ]; then
+    rm -- "${after_db}-wal"
+fi
+if [ -e "${after_db}-shm" ]; then
+    rm -- "${after_db}-shm"
+fi
+
 
 
 
