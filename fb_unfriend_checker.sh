@@ -130,8 +130,8 @@ else
     exit 1
 fi
 
-echo "Lastest db: $before_db"
-echo "Current db: $after_db"
+echo "Latest previous database: $before_db"
+echo "Currently pulled database: $after_db"
 
 # Perform the comparison based on the check_type
 unfriend_output=""
