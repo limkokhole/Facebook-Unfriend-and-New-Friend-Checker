@@ -9,6 +9,11 @@ This Bash script utilizes adb to pull the Facebook database from a rooted Androi
 - Discover New Friends: See who has recently added you.
 
 ---
+### Screenshot:
+
+ ![Android](/images/demo_screenshot.png?raw=true "Sample output")
+
+---
 ### Prerequisites  
 
 - A Linux system with ADB, Bash, and SQLite3 installed.
@@ -49,9 +54,3 @@ cd fb-unfriend-checker`
 ### Important Notes  
 
 - Changes such as unfriending may take some time to reflect in the database due to how data is processed and stored by the Facebook app.
-
----
-### Screenshot:
-
- ![Android](/images/demo_screenshot.png?raw=true "Sample output")
-
