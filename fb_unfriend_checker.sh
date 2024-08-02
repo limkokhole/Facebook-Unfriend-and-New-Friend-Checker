@@ -81,7 +81,7 @@ file_path="/data/user/0/com.facebook.katana/app_mib_msys/v2/$fb_user_id/msys_dat
 while true; do
   # Use adb to check if the file exists on the device
   if adb shell [ -f "$file_path" ]; then
-    echo "File found: $file_path"
+    echo "Database file found: $file_path"
     break  # Exit the loop if the file is found
   else
     echo "Database file does not exist: $file_path"
