@@ -50,3 +50,8 @@ cd fb-unfriend-checker`
 
 - Changes such as unfriending may take some time to reflect in the database due to how data is processed and stored by the Facebook app.
 
+---
+### Screenshot:
+
+ ![Android](/images/demo_screenshot.png?raw=true "Sample output")
+
