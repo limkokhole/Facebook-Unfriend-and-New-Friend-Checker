@@ -102,7 +102,7 @@ postfix=".db" # Distinct from -wal and -shm
 snapshot_dir="$(pwd)" # If db inside current path
 #snapshot_dir=~/Downloads/com.facebook.katana/app_mib_msys/v2/"$fb_user_id" # If hardcode db directory path
 
-# Find the latest directory with full path
+# Find the latest previous database with full path
 before_db=$(find "$snapshot_dir" -maxdepth 1 -type f -name "${prefix}*${postfix}" -printf '%T+ %p\n' | sort -r | head -n 1 | cut -d ' ' -f 2-)
 
 # Get the current date and time in a pretty format
@@ -114,17 +114,17 @@ after_db="${snapshot_dir}/"${prefix}"msys_database_${fb_user_id}_${date_time}${p
 # Pull the current state of the database from the device
 adb pull "/data/user/0/com.facebook.katana/app_mib_msys/v2/$fb_user_id/msys_database_$fb_user_id" "$after_db"
 
-# Check if the latest directory exists
+# Check if the latest previous database exists
 if [ -f "$before_db" ]; then
-    : # echo "The latest directory exists: $latest_dir"
+    : # echo "The latest database exists: $latest_dir"
 else
-    echo -e "\nNo previous directory found. It's normal if first time run. Re-run to diff."
+    echo -e "\nNo previous database found. It's normal if first time run. Re-run to diff."
     exit 1
 fi
 
-# Check if the pull output directory exists
+# Check if the pull output database exists
 if [ -f "$after_db" ]; then
-    : # echo "The pull output directory exists: $latest_dir"
+    : # echo "The pull output database exists: $latest_dir"
 else
     echo -e "\nadb pull failed."
     exit 1
@@ -169,6 +169,15 @@ if [ "$action" = "new" ] || [ "$action" = "both" ]; then
     ATTACH DATABASE '$before_db' AS previous;
     ATTACH DATABASE '$after_db' AS current;
 
+    /* This query identifies changes in contact_viewer_relationship when the previous value was < 2,
+       which means not a friend, while the current value is >= 2. */
+    SELECT current.id 
+    FROM current.contacts AS current
+    JOIN previous.contacts AS previous
+    ON current.id = previous.id
+    WHERE previous.contact_viewer_relationship < 2 
+       AND current.contact_viewer_relationship >= 2;
+       
     -- Find new ids that have contact_viewer_relationship >= 2
     SELECT id
     FROM current.contacts
