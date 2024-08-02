@@ -169,6 +169,15 @@ if [ "$action" = "new" ] || [ "$action" = "both" ]; then
     ATTACH DATABASE '$before_db' AS previous;
     ATTACH DATABASE '$after_db' AS current;
 
+    /* This query identifies changes in contact_viewer_relationship when the previous value was < 2,
+       which means not a friend, while the current value is >= 2. */
+    SELECT current.id 
+    FROM current.contacts AS current
+    JOIN previous.contacts AS previous
+    ON current.id = previous.id
+    WHERE previous.contact_viewer_relationship < 2 
+       AND current.contact_viewer_relationship >= 2;
+       
     -- Find new ids that have contact_viewer_relationship >= 2
     SELECT id
     FROM current.contacts
