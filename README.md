@@ -25,8 +25,10 @@ This Bash script utilizes adb to pull the Facebook database from a rooted Androi
 
 Clone this repository to your local machine:
 
-`git clone https://github.com/limkokhole/Facebook-Unfriend-and-New-Friend-Checker.git
-cd fb-unfriend-checker`
+```
+git clone https://github.com/limkokhole/Facebook-Unfriend-and-New-Friend-Checker.git
+cd fb-unfriend-checker
+```
 
 ---
 ### Usage  
