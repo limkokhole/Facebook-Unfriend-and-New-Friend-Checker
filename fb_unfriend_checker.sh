@@ -96,19 +96,20 @@ done
 
 # Define the prefix
 prefix="DB_fb_unfriend_"
+postfix=".db" # Distinct from -wal and -shm
 
 # Paths to the database snapshots
 snapshot_dir="$(pwd)" # If db inside current path
 #snapshot_dir=~/Downloads/com.facebook.katana/app_mib_msys/v2/"$fb_user_id" # If hardcode db directory path
 
 # Find the latest directory with full path
-before_db=$(find "$snapshot_dir" -maxdepth 1 -type f -name "${prefix}*" -printf '%T+ %p\n' | sort -r | head -n 1 | cut -d ' ' -f 2-)
+before_db=$(find "$snapshot_dir" -maxdepth 1 -type f -name "${prefix}*${postfix}" -printf '%T+ %p\n' | sort -r | head -n 1 | cut -d ' ' -f 2-)
 
 # Get the current date and time in a pretty format
 # Example format: 2023-08-07_17-24-30
 date_time=$(date "+%Y-%m-%d_%H-%M-%S")
 
-after_db="${snapshot_dir}/"${prefix}"msys_database_${fb_user_id}_${date_time}"
+after_db="${snapshot_dir}/"${prefix}"msys_database_${fb_user_id}_${date_time}${postfix}"
 
 # Pull the current state of the database from the device
 adb pull "/data/user/0/com.facebook.katana/app_mib_msys/v2/$fb_user_id/msys_database_$fb_user_id" "$after_db"
@@ -140,19 +141,20 @@ if [ "$action" = "removed" ] || [ "$action" = "both" ]; then
     ATTACH DATABASE '$before_db' AS previous;
     ATTACH DATABASE '$after_db' AS current;
 
-    /* This query identifies changes in contact_viewer_relationship when the previous value was 2. */
+    /* This query identifies changes in contact_viewer_relationship when the previous value was >= 2. 
+    , which 2 and 4 means friend, while */
     SELECT current.id 
     FROM current.contacts AS current
     JOIN previous.contacts AS previous
     ON current.id = previous.id
-    WHERE previous.contact_viewer_relationship = 2 
-       AND current.contact_viewer_relationship != 2;
+    WHERE previous.contact_viewer_relationship >= 2 
+       AND current.contact_viewer_relationship < 2;
 
     -- Handle the case where the entire item no longer exists in the current database
     SELECT id
     FROM previous.contacts
     WHERE id NOT IN (SELECT id FROM current.contacts)
-       AND contact_viewer_relationship = 2;
+       AND contact_viewer_relationship >= 2;
 
     DETACH DATABASE current;
     DETACH DATABASE previous;
@@ -167,11 +169,11 @@ if [ "$action" = "new" ] || [ "$action" = "both" ]; then
     ATTACH DATABASE '$before_db' AS previous;
     ATTACH DATABASE '$after_db' AS current;
 
-    -- Find new ids that have contact_viewer_relationship = 2
+    -- Find new ids that have contact_viewer_relationship >= 2
     SELECT id
     FROM current.contacts
     WHERE id NOT IN (SELECT id FROM previous.contacts)
-      AND contact_viewer_relationship = 2;
+      AND contact_viewer_relationship >= 2;
 
     DETACH DATABASE current;
     DETACH DATABASE previous;
