@@ -13,11 +13,10 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
-# Check if sqlite3 is installed
-if ! command -v sqlite3 >/dev/null 2>&1; then
-    echo "Error: sqlite3 is not installed. Please install sqlite3 to continue."
-    exit 1
-fi
+# Check if the necessary commands are installed
+command -v adb >/dev/null 2>&1 || { echo >&2 "ADB is not installed. Aborting."; exit 1; }
+command -v sqlite3 >/dev/null 2>&1 || { echo >&2 "SQLite3 is not installed. Aborting."; exit 1; }
+command -v xdg-open >/dev/null 2>&1 || { echo >&2 "xdg-open is not installed. Aborting."; exit 1; }
 
 # Assign the first argument to fb_user_id
 fb_user_id=$1
