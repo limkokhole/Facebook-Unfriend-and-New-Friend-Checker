@@ -13,6 +13,12 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
+# Check if sqlite3 is installed
+if ! command -v sqlite3 >/dev/null 2>&1; then
+    echo "Error: sqlite3 is not installed. Please install sqlite3 to continue."
+    exit 1
+fi
+
 # Assign the first argument to fb_user_id
 fb_user_id=$1
 
@@ -138,8 +144,9 @@ unfriend_output=""
 if [ "$action" = "removed" ] || [ "$action" = "both" ]; then
     echo -e "\nFinding removed friends..."
     unfriend_output=$(sqlite3 <<EOF
-    ATTACH DATABASE '$before_db' AS previous;
-    ATTACH DATABASE '$after_db' AS current;
+    -- Use immutable=1 to avoid creation of -wal and -shm files, since only read operations are performed
+    ATTACH DATABASE 'file:$before_db?mode=ro&immutable=1' AS previous;
+    ATTACH DATABASE 'file:$after_db?mode=ro&immutable=1' AS current;
 
     /* This query identifies changes in contact_viewer_relationship when the previous value was >= 2. 
     , which 2 and 4 means friend, while */
@@ -166,8 +173,9 @@ new_friends_output=""
 if [ "$action" = "new" ] || [ "$action" = "both" ]; then
     echo -e "\nFinding new friends..."
     new_friends_output=$(sqlite3 <<EOF
-    ATTACH DATABASE '$before_db' AS previous;
-    ATTACH DATABASE '$after_db' AS current;
+    -- Use immutable=1 to avoid creation of -wal and -shm files, since only read operations are performed
+    ATTACH DATABASE 'file:$before_db?mode=ro&immutable=1' AS previous;
+    ATTACH DATABASE 'file:$after_db?mode=ro&immutable=1' AS current;
 
     /* This query identifies changes in contact_viewer_relationship when the previous value was < 2,
        which means not a friend, while the current value is >= 2. */
@@ -193,10 +201,33 @@ fi
 
 echo
 
+function prevent_spam_web_browser {
+    friends_output="$1"
+    # Count the number of IDs
+    id_count=$(echo "$friends_output" | wc -l)
+
+    # Prompt if too many IDs with a warning and timeout
+    if [ "$id_count" -gt 50 ]; then
+        echo "Warning: Attempting to open $id_count new tabs, one for each friend, in your web browser."
+        echo "This may slow down your system or overwhelm your browser, potentially due to an incompletely synchronized or pulled database."
+        echo "The operation will abort in 30 seconds unless you explicitly agree to proceed."
+        read -t 30 -p "Do you want to continue? (yes/no) " choice
+        # Normalize the input to lowercase using bash parameter expansion
+        choice=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
+        if [ "$choice" != "yes" ] && [ "$choice" != "y" ]; then
+            echo "Operation aborted by user."
+            exit 1
+        fi
+    fi
+}
+
 if [ -n "$unfriend_output" ] || [ -n "$new_friends_output" ]; then
             
     if [ -n "$unfriend_output" ]; then # Check if there are any removed or changed relationships
         echo -e "\n.·´¯(>▂<)´¯·. You got unfriended (╥_╥)"
+
+        prevent_spam_web_browser "$unfriend_output"
+
         echo "$unfriend_output" | while read -r id; do
             name=$(sqlite3 "$before_db" "SELECT name FROM contacts WHERE id = '$id';") # Use this if you only want to show the name, instead of the line below.
             #name=$(sqlite3 -header -line "$before_db" "SELECT * FROM contacts WHERE id = '$id';") # Use this if you want to show ALL columns, instead of the line above.
@@ -215,6 +246,9 @@ if [ -n "$unfriend_output" ] || [ -n "$new_friends_output" ]; then
         
     if [ -n "$new_friends_output" ]; then
         echo -e "\n(ノ^_^)ノ New friend detected! ヘ(^_^ヘ):"
+
+        prevent_spam_web_browser "$new_friends_output"
+
         echo "$new_friends_output" | while read -r id; do
             name=$(sqlite3 "$after_db" "SELECT name FROM contacts WHERE id = '$id';") # Use this if you only want to show the name, instead of the line below.
             #name=$(sqlite3 -header -line "$after_db" "SELECT * FROM contacts WHERE id = '$id';") # Use this if you want to show ALL columns, instead of the line above.
@@ -242,23 +276,6 @@ else
     echo "Prompt to remove the new database you just pulled (y/n):"
     rm -i -- "$after_db"
 fi
-
-# Clean up any remaining WAL and SHM files just in case
-# Ensure there is no `exit 1` after the database is created but before this point
-echo "Cleaning up generated -WAL and -SHM files from sqlite3."
-if [ -e "${before_db}-wal" ]; then
-    rm -- "${before_db}-wal"
-fi
-if [ -e "${before_db}-shm" ]; then
-    rm -- "${before_db}-shm"
-fi
-if [ -e "${after_db}-wal" ]; then
-    rm -- "${after_db}-wal"
-fi
-if [ -e "${after_db}-shm" ]; then
-    rm -- "${after_db}-shm"
-fi
-
 
 
 
