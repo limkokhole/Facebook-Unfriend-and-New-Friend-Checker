@@ -16,7 +16,7 @@ This Bash script utilizes adb to pull the Facebook database from a rooted Androi
 ---
 ### Prerequisites  
 
-- A Linux system with ADB, Bash, and SQLite3 installed.
+- A Linux system with ADB, Bash, SQLite3, and xdg-open installed.
 - A rooted Android emulator or phone with USB debugging enabled and connected to your Linux system.
 - Facebook app logged in on the emulator or phone. If you have just installed and logged into the Facebook app, wait approximately 30 minutes to ensure the full database is available before running this script. In the worst-case scenario, you may need to kill the app and then relaunch it after a long time.
 
