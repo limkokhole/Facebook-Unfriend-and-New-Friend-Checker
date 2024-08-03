@@ -34,12 +34,12 @@ cd fb-unfriend-checker
 ### Usage  
 #### Ensure your device meets the prerequisites, then run the script with the following command:  
 
-    ```
+```
     bash fb_unfriend_checker.sh <fb_user_id> [check_type]
-    ```
+```
 
-    - fb_user_id: Your numerical Facebook user ID, which can be found in the URL when viewing your profile or using the "View As" feature.
-    - check_type (optional): Type of check to perform. Options are:
+- fb_user_id: Your numerical Facebook user ID, which can be found in the URL when viewing your profile or using the "View As" feature.
+- check_type (optional): Type of check to perform. Options are:
         unfriend (default)
         new_friend
         both
